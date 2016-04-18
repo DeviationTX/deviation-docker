@@ -1,12 +1,11 @@
-#FROM phusion/baseimage:0.9.18
 FROM ubuntu:14.04
 MAINTAINER PhracturedBlue <deviationtx@gmail.com>
-# Use baseimage-docker's init system.
-#CMD ["/sbin/my_init"]
-CMD ["/root/build.sh"]
-
 RUN apt-get update && apt-get install -y build-essential git libc6-i386 mingw32 mingw32-binutils mingw32-runtime python gettext zip dialog
+CMD ["/root/build_init.sh"]
+
 COPY build.sh /root/
+COPY build_init.sh /root/
+RUN sha1sum /root/build.sh > /root/.build_sh_sha1
 VOLUME /root
 VOLUME /git
 VOLUME /release

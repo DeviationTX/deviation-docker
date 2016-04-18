@@ -110,9 +110,13 @@ pre_install_windows() {
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 if [ ! -d "$GITDIR/deviation" ]; then
          mkdir $GITDIR 2>/dev/null
-         pushd $GITDIR/
+         pushd $GITDIR/ >/dev/null
          git clone --depth 50 https://github.com/DeviationTx/deviation
-         popd
+         popd > /dev/null
+else
+         pushd $GITDIR/ >/dev/null
+         git pull -u
+         popd > /dev/null
 fi
 
 if [ ! -d $RELEASEDIR ]; then
