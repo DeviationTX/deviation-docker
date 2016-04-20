@@ -3,19 +3,22 @@
 from snack import *
 import os
 import json
+import inspect
 
-VERSION       = "0.9.0"
+VERSION       = "0.9.1"
 SETTINGS_FILE = os.environ["HOME"] + "/.build_settings"
 GITREPO       = "https://github.com/DeviationTx/deviation"
-#TEST settings
-#GITDIR        = os.environ["HOME"] + "/git/deviation"
-#CACHEDIR      = "/tmp/build"
-#RELEASEDIR    = "/tmp/release"
 
 #DOCKER settings
 GITDIR        = "/git/deviation"
 CACHEDIR      = os.environ["HOME"]
 RELEASEDIR    = "/release"
+
+#TEST settings
+if 'TESTBUILD' in os.environ:
+    GITDIR        = os.environ["HOME"] + "/git/deviation"
+    CACHEDIR      = TESTBUILD + "/build"
+    RELEASEDIR    = TESTBUILD + "/release"
 
 def append_checkbox(cb, values, str):
     if str in values:
@@ -81,7 +84,7 @@ def gui():
     for f in emus:
         addItem_checkbox(targets, config.get('targets'), 3, f)
 
-    buttons = ButtonBar(screen, (("Build", "build"), ("Cancel", "cancel")))
+    buttons = ButtonBar(screen, (("Build", "build"), ("Cancel", "cancel"), ("Shell", "shell")))
     makeopts = Entry(32, config.setdefault('makeopts', ""))
     optslabel = Label("Make Options:")
 
@@ -155,20 +158,25 @@ def pre_install_windows():
     os.environ['FLTK_DIR'] = CACHEDIR + "/fltk-1.3.3-w32"
     os.environ['PORTAUDIO_DIR'] = CACHEDIR + "/portaudio-w32"
 
+def restart():
+    # For some reason in docker we can't restart snack once we stop it, so just restart the process instead
+    os.execl("/usr/bin/python", "python", inspect.getfile(inspect.currentframe()))
+
 def main():
 
     if not os.path.isdir(GITDIR):
         os.system("cd " + os.path.dirname(GITDIR) + " && git clone --depth 50 " + GITREPO)
 
-    while 1:
-        [cmd, config] = gui()
-        if not cmd:
-            return
-        if cmd == "git" or config['update-git']:
-            git_update()
+    [cmd, config] = gui()
+    if not cmd:
+        return
+    if cmd == "shell":
+        os.system("/bin/bash")
+        restart()
+    if cmd == "git" or config['update-git']:
+        git_update()
         if cmd is "git":
-            return
-        break
+            restart()
 
     win_build = 0
     arm_build = 0
