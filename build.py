@@ -168,6 +168,7 @@ def main():
             git_update()
         if cmd is "git":
             return
+        break
 
     win_build = 0
     arm_build = 0
