@@ -4,8 +4,9 @@ from snack import *
 import os
 import json
 import inspect
+from optparse import OptionParser
 
-VERSION       = "0.9.1"
+VERSION       = "0.9.2"
 SETTINGS_FILE = os.environ["HOME"] + "/.build_settings"
 GITREPO       = "https://github.com/DeviationTx/deviation"
 
@@ -17,8 +18,8 @@ RELEASEDIR    = "/release"
 #TEST settings
 if 'TESTBUILD' in os.environ:
     GITDIR        = os.environ["HOME"] + "/git/deviation"
-    CACHEDIR      = TESTBUILD + "/build"
-    RELEASEDIR    = TESTBUILD + "/release"
+    CACHEDIR      = os.environ['TESTBUILD'] + "/build"
+    RELEASEDIR    = os.environ['TESTBUILD'] + "/release"
 
 def append_checkbox(cb, values, str):
     if str in values:
@@ -131,6 +132,8 @@ def pre_install_arm():
     if not os.path.isdir(CACHEDIR + "/gcc-arm-none-eabi-4_8-2013q4/bin"):
         os.system("cd " + CACHEDIR + " && " +
                   "curl --retry 10 --retry-max-time 120 -L 'https://launchpad.net/gcc-arm-embedded/4.8/4.8-2013-q4-major/+download/gcc-arm-none-eabi-4_8-2013q4-20131204-linux.tar.bz2' | tar xfj -")
+
+def setenv_arm():
     os.environ['PATH'] += ":" + CACHEDIR + "/gcc-arm-none-eabi-4_8-2013q4/bin"
 
 def pre_install_windows():
@@ -155,6 +158,8 @@ def pre_install_windows():
            "./configure --prefix=" + CACHEDIR + "/portaudio-w32 --host=i586-mingw32msvc && " +
            "make install")
         os.system("cp " + CACHEDIR + "/portaudio-w32/bin/libportaudio-2.dll " + GITDIR + "/src/")
+
+def setenv_windows():
     os.environ['FLTK_DIR'] = CACHEDIR + "/fltk-1.3.3-w32"
     os.environ['PORTAUDIO_DIR'] = CACHEDIR + "/portaudio-w32"
 
@@ -163,6 +168,27 @@ def restart():
     os.execl("/usr/bin/python", "python", inspect.getfile(inspect.currentframe()))
 
 def main():
+    usage = """
+Display build menu:
+	%prog
+Install ARM build environment:
+	%prog --arm-prereq
+Install Windows build environment:
+	%prog --win-prereq"""
+    parser = OptionParser(usage=usage)
+    parser.add_option("-a", "--arm-prereq", action="store_true", dest="arm")
+    parser.add_option("-w", "--win-prereq", action="store_true", dest="win")
+    (options, args) = parser.parse_args()
+    if options.arm:
+        pre_install_arm()
+    if options.win:
+        pre_install_windows()
+
+    #If any options were specified, we should exit
+    optdict = vars(options)
+    for i in optdict:
+        if optdict[i]:
+            return
 
     if not os.path.isdir(GITDIR):
         os.system("cd " + os.path.dirname(GITDIR) + " && git clone --depth 50 " + GITREPO)
@@ -170,7 +196,16 @@ def main():
     [cmd, config] = gui()
     if not cmd:
         return
+    os.system("clear")
+
     if cmd == "shell":
+        print "The git repository is in: " + GITDIR
+        print "If you have it yet setup the build environment, you may want to run:"
+        print "\t" + inspect.getfile(inspect.currentframe()) + " --arm-prereq"
+        print "\t" + inspect.getfile(inspect.currentframe()) + " --win-prereq"
+        print "Type 'exit' to return to the menu"
+        setenv_arm()
+        setenv_windows()
         os.system("/bin/bash")
         restart()
     if cmd == "git" or config['update-git']:
@@ -198,9 +233,11 @@ def main():
     print "Building " + " ".join(targets)
 
     if arm_build:
-         pre_install_arm()
+        pre_install_arm()
+        setenv_arm()
     if win_build:
         pre_install_windows()
+        setenv_windows()
 
     os.system("cd " + GITDIR + "/src && make distclean && make " + " ".join(targets) + " && cp *.zip " + RELEASEDIR)
 
