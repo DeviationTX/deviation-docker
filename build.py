@@ -1,25 +1,33 @@
 #!/usr/bin/env python
 
 from snack import *
-import os
+import os, stat
+import pwd
 import json
 import inspect
+import tempfile
 from optparse import OptionParser
 
-VERSION       = "0.9.2"
+VERSION       = "0.9.3"
 SETTINGS_FILE = os.environ["HOME"] + "/.build_settings"
 GITREPO       = "https://github.com/DeviationTx/deviation"
+SUDO          = "sudo -u docker -E "
+ENV           = {}
 
 #DOCKER settings
-GITDIR        = "/git/deviation"
-CACHEDIR      = os.environ["HOME"]
+GITBASEDIR    = "/git"
+CACHEDIR      = "/opt"
+HOMEDIR       = "/opt/docker"
 RELEASEDIR    = "/release"
 
 #TEST settings
 if 'TESTBUILD' in os.environ:
-    GITDIR        = os.environ["HOME"] + "/git/deviation"
+    GITBASEDIR    = os.environ["HOME"] + "/git"
     CACHEDIR      = os.environ['TESTBUILD'] + "/build"
+    HOMEDIR       = CACHEDIR
     RELEASEDIR    = os.environ['TESTBUILD'] + "/release"
+
+GITDIR        = GITBASEDIR + "/deviation"
 
 def append_checkbox(cb, values, str):
     if str in values:
@@ -46,6 +54,29 @@ def get_targets(dir):
         else:
             txs.append(f)
     return [txs, emus]
+
+def create_git_user_if_needed():
+    try:
+        pwd.getpwnam('docker')
+    except:
+	if os.path.isdir(GITDIR):
+            uid = os.stat(GITDIR).st_uid
+            gid = os.stat(GITDIR).st_gid
+        else:
+            fd, path = tempfile.mkstemp(dir=GITBASEDIR)
+            os.close(fd)
+            uid = os.stat(path).st_uid
+            gid = os.stat(path).st_gid
+            os.unlink(path)
+        if (uid == 0 or gid == 0):
+            os.system("groupadd -r docker && useradd -s /bin/bash -g docker docker")
+            os.chmod(GITBASEDIR, stat.S_IRWXO | stat.S_IRWXG | stat.S_IRWXU)
+        else :
+            os.system("groupadd -r docker -g " + str(gid))
+            os.system("useradd -s /bin/bash --gid " + str(gid) + " -u " + str(uid) + " docker")
+	os.mkdir(HOMEDIR)
+        os.system("chown docker:docker " + HOMEDIR)
+	os.chmod(HOMEDIR, stat.S_IRWXU)
 
 def gui():
     if 'TERM' not in os.environ:
@@ -124,44 +155,51 @@ def gui():
     return cmd, config
 
 
+def sudo(str=""):
+    cmd = SUDO + " ".join("=".join(_) for _ in ENV.items())
+    if "" == str:
+        return os.system(cmd + " /bin/bash")
+    else:
+        return os.system(cmd + " /bin/bash -c '" + str + "'")
+
 def git_update():
-    os.system("cd " + GITDIR + " && git pull -u")
+    sudo("cd " + GITDIR + " && git pull -u")
 
 def pre_install_arm():
     print "Preparing for ARM build"
     if not os.path.isdir(CACHEDIR + "/gcc-arm-none-eabi-4_8-2013q4/bin"):
-        os.system("cd " + CACHEDIR + " && " +
-                  "curl --retry 10 --retry-max-time 120 -L 'https://launchpad.net/gcc-arm-embedded/4.8/4.8-2013-q4-major/+download/gcc-arm-none-eabi-4_8-2013q4-20131204-linux.tar.bz2' | tar xfj -")
+        sudo('cd ' + CACHEDIR + ' && ' +
+             'curl --retry 10 --retry-max-time 120 -L "https://launchpad.net/gcc-arm-embedded/4.8/4.8-2013-q4-major/+download/gcc-arm-none-eabi-4_8-2013q4-20131204-linux.tar.bz2" | tar xfj -')
 
 def setenv_arm():
-    os.environ['PATH'] += ":" + CACHEDIR + "/gcc-arm-none-eabi-4_8-2013q4/bin"
+    ENV['PATH'] = os.environ['PATH'] + ":" + CACHEDIR + "/gcc-arm-none-eabi-4_8-2013q4/bin"
 
 def pre_install_windows():
     print "Preparing for Windows build"
     # don't build 'tests' because they don't work on a cross-compile, so we need to specify 'DIRS' explicitly
     if not os.path.isdir(CACHEDIR + "/fltk-1.3.3-w32/bin"):
-        os.system("mkdir -p " + CACHEDIR + "/src 2>/dev/null")
+        sudo("mkdir -p " + HOMEDIR + "/src 2>/dev/null")
         os.system("mkdir -p " + CACHEDIR + "/fltk-1.3.3-w32 2>/dev/null")
-        os.system("cd " + CACHEDIR + "/src && " +
-           "curl --retry 10 --retry-max-time 120 -L 'http://fltk.org/pub/fltk/1.3.3/fltk-1.3.3-source.tar.gz' | tar xzf -")
-        os.system("cd " + CACHEDIR + "/src/fltk-1.3.3 && " +
-           "./configure --prefix=" + CACHEDIR + "/fltk-1.3.3-w32 --enable-localzlib --enable-localpng --disable-gl --host=i586-mingw32msvc && " +
-           "make DIRS='jpeg zlib png src fluid' &&" +
-           "make install DIRS='jpeg zlib png src fluid'")
+        sudo('cd ' + HOMEDIR + '/src && ' +
+           'curl --retry 10 --retry-max-time 120 -L "http://fltk.org/pub/fltk/1.3.3/fltk-1.3.3-source.tar.gz" | tar xzf -')
+        if 0 == sudo('cd ' + HOMEDIR + '/src/fltk-1.3.3 && ' +
+                     './configure --prefix=' + CACHEDIR + '/fltk-1.3.3-w32 --enable-localzlib --enable-localpng --disable-gl --host=i586-mingw32msvc && ' +
+                     'make DIRS="jpeg zlib png src fluid"'):
+            os.system('cd ' + HOMEDIR + '/src/fltk-1.3.3 && make install DIRS="jpeg zlib png src fluid"')
 
     if not os.path.isdir(CACHEDIR + "/portaudio-w32/bin"):
-        os.system("mkdir -p " + CACHEDIR + "/src 2>/dev/null")
+        sudo("mkdir -p " + HOMEDIR + "/src 2>/dev/null")
         os.system("mkdir -p " + CACHEDIR + "/portaudio-w32 2>/dev/null")
-        os.system("cd " + CACHEDIR + "/src && " +
-           "curl --retry 10 --retry-max-time 120 -L 'http://www.portaudio.com/archives/pa_stable_v19_20140130.tgz' | tar xzf -")
-        os.system("cd " + CACHEDIR + "/src/portaudio && " +
-           "./configure --prefix=" + CACHEDIR + "/portaudio-w32 --host=i586-mingw32msvc && " +
-           "make install")
-        os.system("cp " + CACHEDIR + "/portaudio-w32/bin/libportaudio-2.dll " + GITDIR + "/src/")
+        sudo('cd ' + HOMEDIR + '/src && ' +
+             'curl --retry 10 --retry-max-time 120 -L "http://www.portaudio.com/archives/pa_stable_v19_20140130.tgz" | tar xzf -')
+        if 0 == sudo('cd ' + HOMEDIR + '/src/portaudio && ' +
+                     './configure --prefix=' + CACHEDIR + '/portaudio-w32 --host=i586-mingw32msvc && make'):
+            os.system('cd ' + HOMEDIR + '/src/portaudio && make install')
+        sudo("cp " + CACHEDIR + "/portaudio-w32/bin/libportaudio-2.dll " + GITDIR + "/src/")
 
 def setenv_windows():
-    os.environ['FLTK_DIR'] = CACHEDIR + "/fltk-1.3.3-w32"
-    os.environ['PORTAUDIO_DIR'] = CACHEDIR + "/portaudio-w32"
+    ENV["FLTK_DIR"]      = CACHEDIR + "/fltk-1.3.3-w32"
+    ENV["PORTAUDIO_DIR"] = CACHEDIR + "/portaudio-w32"
 
 def restart():
     # For some reason in docker we can't restart snack once we stop it, so just restart the process instead
@@ -190,8 +228,10 @@ Install Windows build environment:
         if optdict[i]:
             return
 
+    create_git_user_if_needed()
+
     if not os.path.isdir(GITDIR):
-        os.system("cd " + os.path.dirname(GITDIR) + " && git clone --depth 50 " + GITREPO)
+        sudo("cd " + os.path.dirname(GITDIR) + " && git clone --depth 50 " + GITREPO)
 
     [cmd, config] = gui()
     if not cmd:
@@ -201,12 +241,12 @@ Install Windows build environment:
     if cmd == "shell":
         print "The git repository is in: " + GITDIR
         print "If you have it yet setup the build environment, you may want to run:"
-        print "\t" + inspect.getfile(inspect.currentframe()) + " --arm-prereq"
-        print "\t" + inspect.getfile(inspect.currentframe()) + " --win-prereq"
+        print "\tsudo " + inspect.getfile(inspect.currentframe()) + " --arm-prereq"
+        print "\tsudo " + inspect.getfile(inspect.currentframe()) + " --win-prereq"
         print "Type 'exit' to return to the menu"
         setenv_arm()
         setenv_windows()
-        os.system("/bin/bash")
+        sudo()
         restart()
     if cmd == "git" or config['update-git']:
         git_update()
@@ -239,7 +279,9 @@ Install Windows build environment:
         pre_install_windows()
         setenv_windows()
 
-    os.system("cd " + GITDIR + "/src && make distclean && make " + " ".join(targets) + " && cp *.zip " + RELEASEDIR)
+    os.system("cd " + GITDIR + "/src && make distclean")
+    if 0 ==sudo("cd " + GITDIR + "/src && make " + " ".join(targets)):
+        os.system("cd " + GITDIR + "/src && cp -p *.zip " + RELEASEDIR)
 
 
 main()
