@@ -8,7 +8,7 @@ RUN ln -s /opt/docker /home/docker
 RUN echo "docker         ALL = (ALL) NOPASSWD: ALL" >> /etc/sudoers
 COPY build.py /root/
 COPY build_init.sh /root/
-#RUN sha1sum /root/build.py > /root/.build.py.sha1
+RUN sha1sum /root/build.py > /root/.build.py.sha1
 VOLUME /opt
 VOLUME /git
 VOLUME /release

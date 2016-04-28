@@ -75,7 +75,7 @@ def create_git_user_if_needed():
             os.system("groupadd -r docker -g " + str(gid))
             os.system("useradd -s /bin/bash --gid " + str(gid) + " -u " + str(uid) + " docker")
 	os.mkdir(HOMEDIR)
-        os.system("chown docker:docker " + HOMEDIR)
+        os.system("chown docker " + HOMEDIR)
 	os.chmod(HOMEDIR, stat.S_IRWXU)
 
 def gui():
