@@ -9,7 +9,7 @@ import tempfile
 import hashlib
 from optparse import OptionParser
 
-VERSION       = "0.9.4"
+VERSION       = "0.9.5"
 SETTINGS_FILE = os.environ["HOME"] + "/.build_settings"
 GITREPO       = "https://github.com/DeviationTx/deviation"
 SUDO          = "sudo -u docker -E "
@@ -208,9 +208,14 @@ def setenv_windows():
     ENV["FLTK_DIR"]      = CACHEDIR + "/fltk-1.3.3-w32"
     ENV["PORTAUDIO_DIR"] = CACHEDIR + "/portaudio-w32"
 
+def pre_install_linux():
+    if not os.path.isfile("/usr/include/FL/Fl.H"):
+        os.system("apt-get update")
+        os.system("apt-get install -y libfltk1.3-dev")
+
 def restart():
     # For some reason in docker we can't restart snack once we stop it, so just restart the process instead
-    os.execl("/usr/bin/python", "python", inspect.getfile(inspect.currentframe()))
+    os.execl("/usr/bin/python", "python", inspect.getfile(inspect.currentframe()), "--noupdate")
 
 def sha1_file(filepath):
     with open(filepath, 'rb') as f:
@@ -225,8 +230,8 @@ def update(config):
         except:
             pass
         if config.setdefault('autoupdate-build-script', 1):
-            print SCRIPTFILE + ": " + sha1_file(SCRIPTFILE)
-            print tmpfile + ": " + sha1_file(tmpfile)
+            #print SCRIPTFILE + ": " + sha1_file(SCRIPTFILE)
+            #print tmpfile + ": " + sha1_file(tmpfile)
             if sha1_file(SCRIPTFILE) != sha1_file(tmpfile):
                 #Sanity check that new file is ok
                 try:
@@ -251,12 +256,16 @@ Install Windows build environment:
     parser = OptionParser(usage=usage)
     parser.add_option("-a", "--arm-prereq", action="store_true", dest="arm")
     parser.add_option("-w", "--win-prereq", action="store_true", dest="win")
+    parser.add_option("-l", "--linux-prereq", action="store_true", dest="linux")
     parser.add_option("-u", "--update",     action="store_true", dest="update")
+    parser.add_option("-n", "--noupdate",     action="store_true", dest="noupdate")
     (options, args) = parser.parse_args()
     if options.arm:
         pre_install_arm()
     if options.win:
         pre_install_windows()
+    if options.linux:
+        pre_install_linux()
     if options.update:
         config = {}
         update(config)
@@ -264,7 +273,7 @@ Install Windows build environment:
     #If any options were specified, we should exit
     optdict = vars(options)
     for i in optdict:
-        if optdict[i]:
+        if i != "noupdate" and optdict[i]:
             return
 
     create_git_user_if_needed()
@@ -281,7 +290,8 @@ Install Windows build environment:
         return
 
     config = read_config()
-    update(config)
+    if not options.noupdate:
+        update(config)
     cmd = gui(config)
     if not cmd:
         return
@@ -293,6 +303,7 @@ Install Windows build environment:
         print "If you have it yet setup the build environment, you may want to run:"
         print "\tsudo " + inspect.getfile(inspect.currentframe()) + " --arm-prereq"
         print "\tsudo " + inspect.getfile(inspect.currentframe()) + " --win-prereq"
+        print "\tsudo " + inspect.getfile(inspect.currentframe()) + " --linux-prereq"
         print "Type 'exit' to return to the menu"
         setenv_arm()
         setenv_windows()
