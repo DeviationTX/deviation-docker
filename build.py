@@ -6,12 +6,14 @@ import pwd
 import json
 import inspect
 import tempfile
+import hashlib
 from optparse import OptionParser
 
-VERSION       = "0.9.3"
+VERSION       = "0.9.4"
 SETTINGS_FILE = os.environ["HOME"] + "/.build_settings"
 GITREPO       = "https://github.com/DeviationTx/deviation"
 SUDO          = "sudo -u docker -E "
+SCRIPTFILE    = inspect.getfile(inspect.currentframe())
 ENV           = {}
 
 #DOCKER settings
@@ -78,17 +80,24 @@ def create_git_user_if_needed():
         os.system("chown docker " + HOMEDIR)
 	os.chmod(HOMEDIR, stat.S_IRWXU)
 
-def gui():
-    if 'TERM' not in os.environ:
-        os.environ['TERM'] = "xterm"
-
-    rows, columns = os.popen('stty size', 'r').read().split()
-
+def read_config():
     if os.path.isfile(SETTINGS_FILE):
         with open(SETTINGS_FILE, 'r') as f:
             config = json.load(f)
     else:
         config = {}
+    return config
+
+def save_config(config):
+    with open(SETTINGS_FILE, 'w') as f:
+        json.dump(config, f)
+
+def gui(config):
+    if 'TERM' not in os.environ:
+        os.environ['TERM'] = "xterm"
+
+    rows, columns = os.popen('stty size', 'r').read().split()
+
     txs, emus = get_targets(GITDIR + "/src/target/")
     screen = SnackScreen();
     screen.pushHelpLine("    <Tab>/<Alt-Tab> between elements   |  <Space> selects   |  <ESC> exits")
@@ -139,20 +148,18 @@ def gui():
 
     if result == "ESC" or result == "F12" or buttons.buttonPressed(result) == "cancel":
         print "No action"
-        return None, None
+        return None
 
     # Save settings
     config['update-git'] = gitcb.value()
     config['makeopts']   = makeopts.value()
     config['targets']    = targets.getSelection()
-    with open(SETTINGS_FILE, 'w') as f:
-        json.dump(config, f)
 
     if result == gitbut:
         cmd = "git"
     else:
         cmd = buttons.buttonPressed(result)
-    return cmd, config
+    return cmd
 
 
 def sudo(str=""):
@@ -205,6 +212,34 @@ def restart():
     # For some reason in docker we can't restart snack once we stop it, so just restart the process instead
     os.execl("/usr/bin/python", "python", inspect.getfile(inspect.currentframe()))
 
+def sha1_file(filepath):
+    with open(filepath, 'rb') as f:
+        return hashlib.sha1(f.read()).hexdigest()
+
+def update(config):
+    tmpfile = SCRIPTFILE + ".tmp"
+    if os.path.isfile(tmpfile):
+        # Prevent build_init.sh from auto-updating each time
+        try:
+            os.unlink("/root/.build.py.sha1")
+        except:
+            pass
+        if config.setdefault('autoupdate-build-script', 1):
+            print SCRIPTFILE + ": " + sha1_file(SCRIPTFILE)
+            print tmpfile + ": " + sha1_file(tmpfile)
+            if sha1_file(SCRIPTFILE) != sha1_file(tmpfile):
+                #Sanity check that new file is ok
+                try:
+                    with open(tmpfile) as f:
+                        content = f.readlines()
+                        if content[-1].startswith("main()"):
+                            print "Updating " + SCRIPTFILE
+                            os.system("mv -f " + tmpfile + " " + SCRIPTFILE + "; chmod 755 " + SCRIPTFILE)
+                            restart()
+                except:
+                    print "ERROR: Failed to update " + SCRIPTFILE
+    os.system("curl --retry 1 --retry-max-time 60 -L 'https://raw.githubusercontent.com/DeviationTX/deviation-docker/master/build.py' 2>/dev/null > " + tmpfile + " &")
+
 def main():
     usage = """
 Display build menu:
@@ -216,11 +251,15 @@ Install Windows build environment:
     parser = OptionParser(usage=usage)
     parser.add_option("-a", "--arm-prereq", action="store_true", dest="arm")
     parser.add_option("-w", "--win-prereq", action="store_true", dest="win")
+    parser.add_option("-u", "--update",     action="store_true", dest="update")
     (options, args) = parser.parse_args()
     if options.arm:
         pre_install_arm()
     if options.win:
         pre_install_windows()
+    if options.update:
+        config = {}
+        update(config)
 
     #If any options were specified, we should exit
     optdict = vars(options)
@@ -233,9 +272,20 @@ Install Windows build environment:
     if not os.path.isdir(GITDIR):
         sudo("cd " + os.path.dirname(GITDIR) + " && git clone --depth 50 " + GITREPO)
 
-    [cmd, config] = gui()
+    # Handle 'run_once' commands
+    if os.path.isfile(GITDIR + "/.run_once"):
+        setenv_arm()
+        setenv_windows()
+        sudo("cd " + GITDIR + "/src && /bin/sh -c " + GITDIR + "/.run_once")
+        os.remove(GITDIR + "/.run_once");
+        return
+
+    config = read_config()
+    update(config)
+    cmd = gui(config)
     if not cmd:
         return
+    save_config(config)
     os.system("clear")
 
     if cmd == "shell":
