@@ -19,8 +19,6 @@ if [ -f $SHA1 ] && [ "$CURRENT_SHA" == "$OLD_SHA" ]; then
        echo "Unable to fetch updated $SCRIPTNAME"
        rm $SCRIPT.tmp
     fi
-else
-    echo "Skipping update of $SCRIPTNAME"
 fi
 
 exec $SCRIPT
