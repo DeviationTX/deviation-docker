@@ -14,7 +14,6 @@ SETTINGS_FILE = os.environ["HOME"] + "/.build_settings"
 GITREPO       = "https://github.com/DeviationTx/deviation"
 SUDO          = "sudo -u docker -E "
 SCRIPTFILE    = inspect.getfile(inspect.currentframe())
-ENV           = {}
 
 #DOCKER settings
 GITBASEDIR    = "/git"
@@ -30,6 +29,7 @@ if 'TESTBUILD' in os.environ:
     RELEASEDIR    = os.environ['TESTBUILD'] + "/release"
 
 GITDIR        = GITBASEDIR + "/deviation"
+ENV           = {"HOME": HOMEDIR}
 
 def append_checkbox(cb, values, str):
     if str in values:
@@ -161,6 +161,23 @@ def gui(config):
         cmd = buttons.buttonPressed(result)
     return cmd
 
+def which(program):
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+
+    return None
+
 
 def sudo(str=""):
     cmd = SUDO + " ".join("=".join(_) for _ in ENV.items())
@@ -212,6 +229,14 @@ def pre_install_linux():
     if not os.path.isfile("/usr/include/FL/Fl.H"):
         os.system("apt-get update")
         os.system("apt-get install -y libfltk1.3-dev")
+        os.system("apt-get clean")
+
+def pre_install_manual():
+    if which("virtualenv") and which("inkscape"):
+        return
+    os.system("apt-get update")
+    os.system("apt-get install -y python-virtualenv inkscape python-dev libjpeg-dev libz-dev")
+    os.system("apt-get clean")
 
 def restart():
     # For some reason in docker we can't restart snack once we stop it, so just restart the process instead
@@ -257,6 +282,7 @@ Install Windows build environment:
     parser.add_option("-a", "--arm-prereq", action="store_true", dest="arm")
     parser.add_option("-w", "--win-prereq", action="store_true", dest="win")
     parser.add_option("-l", "--linux-prereq", action="store_true", dest="linux")
+    parser.add_option("-m", "--manual-prereq", action="store_true", dest="manual")
     parser.add_option("-u", "--update",     action="store_true", dest="update")
     parser.add_option("-n", "--noupdate",     action="store_true", dest="noupdate")
     (options, args) = parser.parse_args()
@@ -266,6 +292,8 @@ Install Windows build environment:
         pre_install_windows()
     if options.linux:
         pre_install_linux()
+    if options.manual:
+        pre_install_manual()
     if options.update:
         config = {}
         update(config)
@@ -304,6 +332,7 @@ Install Windows build environment:
         print "\tsudo " + inspect.getfile(inspect.currentframe()) + " --arm-prereq"
         print "\tsudo " + inspect.getfile(inspect.currentframe()) + " --win-prereq"
         print "\tsudo " + inspect.getfile(inspect.currentframe()) + " --linux-prereq"
+        print "\tsudo " + inspect.getfile(inspect.currentframe()) + " --manual-prereq"
         print "Type 'exit' to return to the menu"
         setenv_arm()
         setenv_windows()
