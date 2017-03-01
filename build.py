@@ -221,9 +221,21 @@ def pre_install_windows():
             os.system('cd ' + HOMEDIR + '/src/portaudio && make install')
         sudo("cp " + CACHEDIR + "/portaudio-w32/bin/libportaudio-2.dll " + GITDIR + "/src/")
 
+    if not os.path.isdir(CACHEDIR + "/mpg123-w32/bin"):
+        sudo("mkdir -p " + HOMEDIR + "/src 2>/dev/null")
+        os.system("mkdir -p " + CACHEDIR + "/mpg123-w32 2>/dev/null")
+        sudo('cd ' + HOMEDIR + '/src && ' +
+             'curl --retry 10 --retry-max-time 120 -L "http://www.mpg123.de/download/mpg123-1.23.8.tar.bz2" | tar xjf -')
+        if 0 == sudo('cd ' + HOMEDIR + '/src/mpg123-1.23.8 && ' +
+                     './configure --prefix=' + CACHEDIR + '/mpg123-w32 --host=i586-mingw32msvc --disable-shared && make'):
+            os.system('cd ' + HOMEDIR + '/src/mpg123-1.23.8 && make install')
+	os.system('strip --strip-unneeded ' + CACHEDIR + "/mpg123-w32/bin/mpg123.exe')
+        sudo("cp " + CACHEDIR + "/mpg123-w32/bin/mpg123.exe " + GITDIR + "/src/")
+
 def setenv_windows():
     ENV["FLTK_DIR"]      = CACHEDIR + "/fltk-1.3.3-w32"
     ENV["PORTAUDIO_DIR"] = CACHEDIR + "/portaudio-w32"
+    ENV["MPG123_DIR"] = CACHEDIR + "/mpg123-w32"
 
 def pre_install_linux():
     if not os.path.isfile("/usr/include/FL/Fl.H"):
