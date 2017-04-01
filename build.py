@@ -229,7 +229,7 @@ def pre_install_windows():
         if 0 == sudo('cd ' + HOMEDIR + '/src/mpg123-1.23.8 && ' +
                      './configure --prefix=' + CACHEDIR + '/mpg123-w32 --host=i586-mingw32msvc --disable-shared && make'):
             os.system('cd ' + HOMEDIR + '/src/mpg123-1.23.8 && make install')
-	os.system("strip --strip-unneeded " + CACHEDIR + "/mpg123-w32/bin/mpg123.exe")
+        os.system("strip --strip-unneeded " + CACHEDIR + "/mpg123-w32/bin/mpg123.exe")
         sudo("cp " + CACHEDIR + "/mpg123-w32/bin/mpg123.exe " + GITDIR + "/src/")
 
 def setenv_windows():
