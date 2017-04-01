@@ -61,7 +61,7 @@ def create_git_user_if_needed():
     try:
         pwd.getpwnam('docker')
     except:
-	if os.path.isdir(GITDIR):
+        if os.path.isdir(GITDIR):
             uid = os.stat(GITDIR).st_uid
             gid = os.stat(GITDIR).st_gid
         else:
@@ -76,9 +76,9 @@ def create_git_user_if_needed():
         else :
             os.system("groupadd -r docker -g " + str(gid))
             os.system("useradd -s /bin/bash --gid " + str(gid) + " -u " + str(uid) + " docker")
-	os.mkdir(HOMEDIR)
+        os.mkdir(HOMEDIR)
         os.system("chown docker " + HOMEDIR)
-	os.chmod(HOMEDIR, stat.S_IRWXU)
+        os.chmod(HOMEDIR, stat.S_IRWXU)
 
 def read_config():
     if os.path.isfile(SETTINGS_FILE):
@@ -285,11 +285,11 @@ def update(config):
 def main():
     usage = """
 Display build menu:
-	%prog
+        %prog
 Install ARM build environment:
-	%prog --arm-prereq
+        %prog --arm-prereq
 Install Windows build environment:
-	%prog --win-prereq"""
+        %prog --win-prereq"""
     parser = OptionParser(usage=usage)
     parser.add_option("-a", "--arm-prereq", action="store_true", dest="arm")
     parser.add_option("-w", "--win-prereq", action="store_true", dest="win")
