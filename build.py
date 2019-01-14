@@ -187,7 +187,7 @@ def sudo(str=""):
         return os.system(cmd + " /bin/bash -c '" + str + "'")
 
 def git_update():
-    sudo("cd " + GITDIR + " && git pull -u")
+    sudo("cd " + GITDIR + " && git pull -u && git submodule update --init --recursive")
 
 def pre_install_arm():
     print "Preparing for ARM build"
@@ -319,7 +319,7 @@ Install Windows build environment:
     create_git_user_if_needed()
 
     if not os.path.isdir(GITDIR):
-        sudo("cd " + os.path.dirname(GITDIR) + " && git clone --depth 50 " + GITREPO)
+        sudo("cd " + os.path.dirname(GITDIR) + " && git clone --depth 50 " + GITREPO + "&& git submodule update --init --recursive")
 
     # Handle 'run_once' commands
     if os.path.isfile(GITDIR + "/.run_once"):
