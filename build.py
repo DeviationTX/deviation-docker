@@ -191,12 +191,12 @@ def git_update():
 
 def pre_install_arm():
     print "Preparing for ARM build"
-    if not os.path.isdir(CACHEDIR + "/gcc-arm-none-eabi-4_8-2013q4/bin"):
+    if not os.path.isdir(CACHEDIR + "/gcc-arm-none-eabi-8-2018-q4-major/bin"):
         sudo('cd ' + CACHEDIR + ' && ' +
-             'curl --retry 10 --retry-max-time 120 -L "https://launchpad.net/gcc-arm-embedded/4.8/4.8-2013-q4-major/+download/gcc-arm-none-eabi-4_8-2013q4-20131204-linux.tar.bz2" | tar xfj -')
+             'curl --retry 10 --retry-max-time 120 -L "https://developer.arm.com/-/media/Files/downloads/gnu-rm/8-2018q4/gcc-arm-none-eabi-8-2018-q4-major-linux.tar.bz2" | tar xfj -')
 
 def setenv_arm():
-    ENV['PATH'] = os.environ['PATH'] + ":" + CACHEDIR + "/gcc-arm-none-eabi-4_8-2013q4/bin"
+    ENV['PATH'] = os.environ['PATH'] + ":" + CACHEDIR + "/gcc-arm-none-eabi-8-2018-q4-major/bin"
 
 def pre_install_windows():
     print "Preparing for Windows build"
