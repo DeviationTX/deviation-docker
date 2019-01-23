@@ -1,7 +1,7 @@
 FROM ubuntu:14.04
 MAINTAINER PhracturedBlue <deviationtx@gmail.com>
-RUN apt-get update && apt-get install -y build-essential git libc6-i386 mingw32 mingw32-binutils mingw32-runtime gettext zip python python-newt
-RUN cd /opt && curl --retry 10 --retry-max-time 120 -L 'https://launchpad.net/gcc-arm-embedded/4.8/4.8-2013-q4-major/+download/gcc-arm-none-eabi-4_8-2013q4-20131204-linux.tar.bz2' | tar xfj -
+RUN apt-get update && apt-get install -y build-essential git mingw32 mingw32-binutils mingw32-runtime gettext zip python python-newt
+RUN cd /opt && curl --retry 10 --retry-max-time 120 -L 'https://developer.arm.com/-/media/Files/downloads/gnu-rm/8-2018q4/gcc-arm-none-eabi-8-2018-q4-major-linux.tar.bz2' | tar xfj -
 CMD ["/root/build_init.sh"]
 RUN mv /root /opt/root && ln -s /opt/root /root && chmod 755 /opt/root
 RUN ln -s /opt/docker /home/docker
