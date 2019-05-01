@@ -57,6 +57,16 @@ def get_targets(dir):
             txs.append(f)
     return [txs, emus]
 
+        
+def get_multiple_targets(rootdir, subdirs):
+    txs = [];
+    emus = [];
+    for subdir in subdirs:
+        l_txs, l_emus = get_targets(rootdir + '/' + subdir)
+        txs += l_txs
+        emus += l_emus
+    return [txs, emus]
+
 def create_git_user_if_needed():
     try:
         pwd.getpwnam('docker')
@@ -98,7 +108,8 @@ def gui(config):
 
     rows, columns = os.popen('stty size', 'r').read().split()
 
-    txs, emus = get_targets(GITDIR + "/src/target/tx/devo/")
+    txs, emus = get_multiple_targets(GITDIR + "/src/target/tx", ["devo", "radiolink"])
+    
     screen = SnackScreen();
     screen.pushHelpLine("    <Tab>/<Alt-Tab> between elements   |  <Space> selects   |  <ESC> exits")
 
