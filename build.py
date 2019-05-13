@@ -108,7 +108,7 @@ def gui(config):
 
     rows, columns = os.popen('stty size', 'r').read().split()
 
-    txs, emus = get_multiple_targets(GITDIR + "/src/target/tx", ["devo", "radiolink"])
+    txs, emus = get_multiple_targets(GITDIR + "/src/target/tx", ["devo", "radiolink", "opentx"])
 
     screen = SnackScreen();
     screen.pushHelpLine("    <Tab>/<Alt-Tab> between elements   |  <Space> selects   |  <ESC> exits")
