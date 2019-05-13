@@ -57,7 +57,7 @@ def get_targets(dir):
             txs.append(f)
     return [txs, emus]
 
-        
+
 def get_multiple_targets(rootdir, subdirs):
     txs = [];
     emus = [];
@@ -109,7 +109,7 @@ def gui(config):
     rows, columns = os.popen('stty size', 'r').read().split()
 
     txs, emus = get_multiple_targets(GITDIR + "/src/target/tx", ["devo", "radiolink"])
-    
+
     screen = SnackScreen();
     screen.pushHelpLine("    <Tab>/<Alt-Tab> between elements   |  <Space> selects   |  <ESC> exits")
 
@@ -126,9 +126,9 @@ def gui(config):
     else:
         cbheight = 10
     targets = CheckboxTree(height = cbheight, scroll = 1)
-   
-    append_checkbox(targets, config.get('targets'), "default") 
-    append_checkbox(targets, config.get('targets'), "emu_default") 
+
+    append_checkbox(targets, config.get('targets'), "default")
+    append_checkbox(targets, config.get('targets'), "emu_default")
     targets.append("Transmitter builds", None, 1)
     for f in txs:
         addItem_checkbox(targets, config.get('targets'), 2, f)
